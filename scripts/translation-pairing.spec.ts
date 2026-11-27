@@ -1,11 +1,10 @@
 /** Regression tests for bilingual snapshots, corpus scope, and structure. */
 
-import { execFileSync, spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { gitIndexPaths, readGitIndexBlob } from './translation-pairing-git.ts'
 import { normalizeTranslationMarkdownLinkEdits } from './translation-links.ts'
 import {
   computeTranslationPairingRecord,
@@ -58,47 +57,6 @@ function fixtureSignature(
     { repoRoot: root, sourcePath, isTranslationPairSource: fixturePairSource, markdown },
   )
 }
-
-describe('translation pairing index reads', () => {
-  it('reads staged bytes independently of the working tree', () => {
-    const root = mkdtempSync(join(tmpdir(), 'dsh-translation-pairing-index-'))
-    try {
-      execFileSync('git', ['init', '--quiet', root], {
-        env: { ...process.env, GIT_DEFAULT_HASH: 'sha1' },
-      })
-      execFileSync('git', ['-C', root, 'config', 'user.email', 'pairing@example.test'])
-      execFileSync('git', ['-C', root, 'config', 'user.name', 'Pairing Test'])
-      writeFileSync(join(root, 'owner.md'), 'staged')
-      execFileSync('git', ['-C', root, 'add', 'owner.md'])
-      writeFileSync(join(root, 'owner.md'), 'unstaged')
-
-      expect(readGitIndexBlob(root, 'owner.md')?.toString('utf8')).toBe('staged')
-      expect(readGitIndexBlob(root, 'absent.md')).toBeUndefined()
-    } finally {
-      rmSync(root, { recursive: true, force: true })
-    }
-  })
-
-  it('lists exact index files without treating a directory prefix as one entry', () => {
-    const root = mkdtempSync(join(tmpdir(), 'dsh-translation-pairing-index-'))
-    try {
-      execFileSync('git', ['init', '--quiet', root], {
-        env: { ...process.env, GIT_DEFAULT_HASH: 'sha1' },
-      })
-      mkdirSync(join(root, 'docs'), { recursive: true })
-      writeFileSync(join(root, 'docs/reference.md'), '# Reference\n')
-      writeFileSync(join(root, 'docs/reference.zh.md'), '# 参考\n')
-      execFileSync('git', ['-C', root, 'add', 'docs'])
-
-      expect(gitIndexPaths(root)).toEqual(new Set([
-        'docs/reference.md',
-        'docs/reference.zh.md',
-      ]))
-    } finally {
-      rmSync(root, { recursive: true, force: true })
-    }
-  })
-})
 
 describe('translation pairing manifest', () => {
   it('accepts an exclusions-only manifest', () => {
@@ -530,13 +488,11 @@ describe('pair CLI arguments', () => {
 
   it('scopes a check to named pairs and dedupes the three spellings', () => {
     expect(parseTranslationPairingCliArgs(['docs/foo.zh.md', 'docs/foo.i18n.yaml', 'docs/bar.md'])).toEqual({
-      input: 'worktree',
       mode: 'check',
       scope: 'pairs',
       anchors: ['docs/bar.md', 'docs/foo.md'],
     })
     expect(parseTranslationPairingCliArgs([])).toEqual({
-      input: 'worktree',
       mode: 'check',
       scope: 'corpus',
       anchors: [],
@@ -546,13 +502,11 @@ describe('pair CLI arguments', () => {
   it('requires --write to name confirmed pairs or opt into --all', () => {
     expect(() => parseTranslationPairingCliArgs(['--write'])).toThrow('requires the pair(s) you confirmed')
     expect(parseTranslationPairingCliArgs(['--write', 'docs/foo.md'])).toEqual({
-      input: 'worktree',
       mode: 'write',
       scope: 'pairs',
       anchors: ['docs/foo.md'],
     })
     expect(parseTranslationPairingCliArgs(['--write', '--all'])).toEqual({
-      input: 'worktree',
       mode: 'write',
       scope: 'corpus',
       anchors: [],
@@ -562,25 +516,13 @@ describe('pair CLI arguments', () => {
 
   it('keeps --list corpus-only and rejects unknown flags', () => {
     expect(parseTranslationPairingCliArgs(['--list'])).toEqual({
-      input: 'worktree',
       mode: 'list',
       scope: 'corpus',
       anchors: [],
     })
     expect(() => parseTranslationPairingCliArgs(['--list', 'docs/foo.md'])).toThrow('takes no other flags or paths')
     expect(() => parseTranslationPairingCliArgs(['--all'])).toThrow('--all only applies to --write')
-    expect(() => parseTranslationPairingCliArgs(['--frobnicate'])).toThrow('unknown flag(s): --frobnicate')
-  })
-
-  it('makes cached verification a named, read-only index check', () => {
-    expect(parseTranslationPairingCliArgs(['--cached', 'docs/foo.i18n.yaml'])).toEqual({
-      input: 'index',
-      mode: 'check',
-      scope: 'pairs',
-      anchors: ['docs/foo.md'],
-    })
-    expect(() => parseTranslationPairingCliArgs(['--cached'])).toThrow('requires the staged pair paths')
-    expect(() => parseTranslationPairingCliArgs(['--cached', '--write', 'docs/foo.md'])).toThrow('read-only')
+    expect(() => parseTranslationPairingCliArgs(['--cached'])).toThrow('unknown flag(s): --cached')
   })
 })
 

@@ -52,7 +52,7 @@ Status: implemented
 
 ### 2. pre-commit 钩子不重新生成第三方声明
 
-- **改动：** [`lefthook.yml`](../../../../lefthook.yml) 中的 `pre-commit` 钩子没有第三方声明任务。[`gen-third-party-notices.spec.ts`](../../../../scripts/gen-third-party-notices.spec.ts) 在测试 lane（包括必过的 `node 24 / coverage` lane）中断言 `THIRD_PARTY_NOTICES.md` 已提交的字节，过期时指出 `pnpm run gen-third-party-notices`。[生成的第三方声明 Note](2026-07-30-generated-third-party-notices.zh.md) 拥有这一新鲜度决策。
+- **改动：** [`gen-third-party-notices.spec.ts`](../../../../scripts/gen-third-party-notices.spec.ts) 在测试 lane（包括必过的 `node 24 / coverage` lane）中断言 `THIRD_PARTY_NOTICES.md` 已提交的字节，过期时指出 `pnpm run gen-third-party-notices`。[生成的第三方声明 Note](2026-07-30-generated-third-party-notices.zh.md) 拥有这一新鲜度决策。
 - **性能：** 暂存一个位于包 `src/` 子目录下的文件的提交，钩子耗时由 16.5/17.8 s 降为 4.3/4.5 s，其中第三方声明任务占 12.4/13.4 s。
 - **取舍：** 使第三方声明过期的提交会在推送后于测试 lane 失败，而不是在提交时被修正。
 
@@ -143,7 +143,7 @@ Status: implemented
 
 ## 后果
 
-无需重查时 pre-push `typecheck` 约 14–22 s，`lint` 与 `doc-typecheck` 的前置步骤约 12 s，改动 1 个文件的提交的钩子约 4 s。`pnpm run test` 在本地最多启动 48 个 fork，`test:docs` 与 `doc-sync` 最多同时运行 8 个门禁。Typert 输出、生成的页面、文件列表与引用判定都与基线逐字节一致。
+实测无需重查时 `typecheck` 约 14–22 s，`lint` 与 `doc-typecheck` 的前置步骤约 12 s。`pnpm run test` 在本地最多启动 48 个 fork，`test:docs` 与 `doc-sync` 最多同时运行 8 个门禁。Typert 输出、生成的页面、文件列表与引用判定都与基线逐字节一致。
 
 代价：类型检查命令不刷新可运行的 bundle；第三方声明过期时在推送后于测试 lane 失败；本地默认值不使用超过上限的 CPU，而配额低于上限的容器仍会超额订阅；并发 8 个文档门禁抬高 `doc-sync` 的 RSS 峰值；CLI help 峰值约用 3.6 GB 内存；doc graphs 与 markdown links 假定运行期间工作树不变；除 Emitter 用例外，`type-model.spec.ts` 检验的是桩，而不是真实 zod、`@types/node`、DOM lib 与磁盘 I/O；增量 `typecheck` 继承 Issue #6022 跟踪的 Remote 声明缺口。
 

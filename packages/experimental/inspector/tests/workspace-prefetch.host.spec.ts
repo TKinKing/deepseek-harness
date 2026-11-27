@@ -12,9 +12,9 @@ function manifest(path: string): Manifest {
   return JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8')) as Manifest
 }
 
-it('installs workspace Git hooks without prefetching DevTools', () => {
+it('keeps DevTools prefetch out of workspace installation', () => {
   const root = manifest('../../../../package.json')
-  expect(root.scripts?.postinstall).toBe('node scripts/install-lefthook.mjs')
+  expect(root.scripts?.postinstall).toBeUndefined()
   expect(root.scripts?.['prefetch:devtools']).toBeUndefined()
 })
 

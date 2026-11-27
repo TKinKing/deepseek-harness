@@ -3,8 +3,7 @@
  * per-section hashes for every in-scope document. The manifest contains only explicit
  * exclusions, which may have neither a counterpart nor a sidecar.
  * `--list` reports state; `--write <pairs...>` records the named confirmed
- * pairs (`--write --all` records every complete pair); `--cached <pairs...>`
- * checks exact index bytes for hooks. A check or write named with pair paths
+ * pairs (`--write --all` records every complete pair). A check or write named with pair paths
  * touches only those pairs, so update iteration does not pay for a corpus
  * scan. Translation quality remains a review responsibility.
  * See `docs/i18n/README.md` for the owning contract.
@@ -12,7 +11,6 @@
 
 import { existsSync, globSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, join, resolve, sep } from 'node:path'
-import { gitIndexPaths, readGitIndexBlob } from './translation-pairing-git.ts'
 import {
   computeTranslationPairingRecord,
   parseTranslationPairingRecord,
@@ -50,26 +48,20 @@ try {
 }
 const listMode = request.mode === 'list'
 const writeMode = request.mode === 'write'
-const indexMode = request.input === 'index'
-const indexFiles = indexMode ? gitIndexPaths(root) : undefined
-
 const contentCache = new Map<string, Buffer | undefined>()
 
-/** Read one repository path from the selected worktree or index plane. */
+/** Read one repository file from the working tree. */
 function readRepositoryFile(file: string): Buffer | undefined {
   if (contentCache.has(file)) return contentCache.get(file)
-  const content = indexMode
-    ? indexFiles?.has(file) ? readGitIndexBlob(root, file) : undefined
-    : existsSync(join(root, file)) && statSync(join(root, file)).isFile()
-      ? readFileSync(join(root, file))
-      : undefined
+  const path = join(root, file)
+  const content = existsSync(path) && statSync(path).isFile() ? readFileSync(path) : undefined
   contentCache.set(file, content)
   return content
 }
 
-/** Whether one path exists in the selected content plane. */
+/** Whether the working tree contains a file at the given path. */
 function repositoryFileExists(file: string): boolean {
-  return indexMode ? indexFiles?.has(file) === true : readRepositoryFile(file) !== undefined
+  return readRepositoryFile(file) !== undefined
 }
 
 /** Discover source Markdown and pairing sidecars before applying the corpus predicate. */
@@ -82,7 +74,7 @@ const SCOPE_PATTERNS = [
 
 const manifestContent = readRepositoryFile('scripts/translation-pairing.manifest.json')
 if (manifestContent === undefined) {
-  throw new Error('scripts/translation-pairing.manifest.json is missing from the selected content plane')
+  throw new Error('scripts/translation-pairing.manifest.json is missing from the working tree')
 }
 const manifest = parseTranslationPairingManifest(manifestContent.toString('utf8'))
 const isTranslationPairSource = translationPairSourcePredicate(manifest)
@@ -109,10 +101,7 @@ if (request.scope === 'pairs') {
     for (const file of [source, zh, meta]) {
       if (repositoryFileExists(file)) files.add(file)
     }
-    // A named worktree anchor with no files still enters the source list so
-    // an interactive check reports it. An index check accepts a complete
-    // three-file deletion and still rejects every partial deletion below.
-    if (!indexMode && !repositoryFileExists(anchor)) files.add(anchor)
+    if (!repositoryFileExists(anchor)) files.add(anchor)
   }
 } else {
   // One call shares a single directory walk across every pattern.
@@ -131,7 +120,7 @@ if (request.scope === 'pairs') {
     const { source, zh, meta } = translationPairPaths(anchor)
     return ![source, zh, meta].some(repositoryFileExists)
   })
-  if (rejected.length > 0 || (!indexMode && absent.length > 0)) {
+  if (rejected.length > 0 || absent.length > 0) {
     for (const anchor of rejected) {
       console.error(`verify-translation-pairing: ${anchor} is not an in-scope pair (excluded or outside the documentation corpus; see docs/i18n/README.md)`)
     }
@@ -358,7 +347,7 @@ if (listMode) {
 
 if (errors.length === 0) {
   console.log(request.scope === 'pairs'
-    ? `verify-translation-pairing: ${pairAnchors.size} named ${indexMode ? 'staged ' : ''}pair(s) consistent; the corpus-wide check still runs in doc-sync.`
+    ? `verify-translation-pairing: ${pairAnchors.size} named pair(s) consistent; the corpus-wide check still runs in doc-sync.`
     : `verify-translation-pairing: ${pairAnchors.size} pair(s) checked across all in-scope documentation, all consistent.`)
   process.exit(0)
 }

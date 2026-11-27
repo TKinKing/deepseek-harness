@@ -13,7 +13,7 @@
 - Node.js 要求 24.9 或更高版本。CI 覆盖 24.9、最新的 24 和 26；见 [Node 引擎下限 Agent Note](../.agents/notes/implemented/process/2026-10-15-node-24-runtime-floor.zh.md)。
 - 启用 Node.js TypeScript 类型剥离。仓库构建脚本用 tsdown 的 native 配置加载器加载 `tsdown.config.ts`，因此当 `NODE_OPTIONS` 含 `--no-experimental-strip-types` 或 Node.js 构建缺少 TypeScript 支持时会失败；`pnpm run build` 会先检查这一条件并指出原因。
 - 启用了 Corepack 的 pnpm。仓库在 `package.json` 中固定使用 `pnpm@11.28.5`；如果 `pnpm --version` 无法通过 Corepack 解析，请先运行 `corepack enable`。
-- Git 2.26 或更高版本；钩子设置会启用 Git 的 worktree 专属配置扩展。
+- Git 2.26 或更高版本。
 - 可选：一个 DeepSeek API key，用于 Web、headless 和 ACP（Agent Client Protocol）自动化 agent（智能体）演示以及真实 API 的 e2e 测试。
 
 ### Windows 与 WSL 2
@@ -34,17 +34,9 @@ pnpm 使用严格的符号链接布局，让未声明的依赖直接失败，而
 pnpm install
 ```
 
-安装过程还会通过 `scripts/install-lefthook.mjs` 配置 worktree 本地的 Lefthook 钩子。[worktree 本地钩子 Agent Note](../.agents/notes/implemented/process/2026-07-27-worktree-local-lefthook.zh.md) 负责钩子路径的安全约定。
-
 [DevTools 前端](../packages/experimental/inspector/README.zh.md#use-this-package)通过固定版本的 npm 源码包和 Vite 在本地编译。依赖安装完成后，构建不需要网络连接或安装浏览器。workspace 与发布包的安装过程都不运行 DevTools 资源下载 hook；发布的 Inspector 包包含已构建的前端。
 
-如果依赖是从缓存恢复或 `postinstall` 被跳过而导致钩子缺失，请手动安装：
-
-```sh
-node scripts/install-lefthook.mjs
-```
-
-如果包装脚本拒绝现有 Git 配置或报告陈旧锁，请遵循其诊断和所链接的 Agent Note，不要凭猜测编辑 worktree 元数据。移动检出目录后，请重新运行包装脚本以重新生成自有路径。
+如果现有检出目录包含项目安装的 Lefthook 脚本，先运行 `git config --show-origin --get core.hooksPath`。通过所配置的 `dsh-hooks` 目录中的 `.dsh-lefthook-owned` 确认归属。删除该目录下生成的 `pre-commit`、`pre-merge-commit` 和 `pre-push` 脚本，以及 Git 默认钩子目录中的相同副本。用 `git config --worktree --fixed-value --unset-all core.hooksPath <owned-path>` 清除对应配置值。
 
 新克隆后请先运行一次类型检查：
 
@@ -142,21 +134,11 @@ DEEPSEEK_BASE_URL=https://... # optional
 
 ### Git 集成
 
-`.i18n.yaml` 记录使用 Git 默认文本合并。只有当两个分支都修改了同一标题分节中的语言特有内容时，记录才会冲突；先解决 Markdown 冲突，再重新运行 `pnpm run verify-translation-pairing --write <pair>`。如果 `pre-merge-commit` 拒绝原本能干净完成的合并，Git 会把完整结果留在暂存区但不创建提交；请修复失败后运行 `git commit`，或运行 `git merge --abort`。
+`.i18n.yaml` 记录使用 Git 默认文本合并。如果两个分支修改了同一标题分节中各自语言的内容，请先解决 Markdown 冲突，再运行 `pnpm run verify-translation-pairing --write <pair>`。
 
-lefthook 在 `lefthook.yml` 中配置，作为快速的本地检查点：
+贡献者运行一次[与改动行为相关的检查](../AGENTS.md#run-relevant-checks-locally)。CI 负责全量覆盖率门禁、构建产物冒烟测试，以及 Node 24.9、最新的 24 和 26 兼容性矩阵。
 
-- `pre-commit` 对照暂存的配对文档 blob 校验暂存的配对记录，使用不加载项目的 `.oxlintrc.staged.json` 配置验证暂存文件，并通过一次有界重试应用 Oxlint 修复，然后检查暂存 diff 中的空白错误，在 pi-ai 提供方元数据的输入或生成文件已暂存时校验元数据，并运行 vendor manifest（元数据清单）守卫；
-- `pre-merge-commit` 在 Git 创建自动合并提交前执行同样以索引为准的配对检查；
-- `pre-push` 运行 `pnpm run typecheck`；该命令先不打包地生成 Typert 约定，再运行 Client TypeScript 检查，并检查两个 aggregate。
-
-vendor manifest 守卫检查 `vendor/*/src` 下的改动是否连同对应的 `vendor/README.md` manifest 更新一起暂存。请在编辑 vendor 代码前先阅读 `vendor/README.md`。
-
-pi-ai 检查会在内存中重新生成预期元数据。数据过期时，检查拒绝提交，不改写或暂存文件。修改 pi-ai 依赖或生成器后，请按包内的[提供方元数据更新步骤](../packages/llm/llm-pi-ai/README.zh.md#generated-provider-metadata)操作。
-
-除限定范围的配对和提供方元数据检查外，这些钩子有意不运行测试、快照、文档检查、构建或 `hygiene`。贡献者只运行一次[与改动行为相关的检查](../AGENTS.md#run-relevant-checks-locally)；CI 负责全量覆盖率门禁、构建产物冒烟测试，以及 Node 24.9、最新的 24 和 26 兼容性矩阵。
-
-贡献者可以选择运行 `pnpm run check:all`，执行全面的本地门禁集。该命令独立于 Git 钩子，也不是对 agent 的指令。
+贡献者可以选择运行 `pnpm run check:all`，执行全面的本地门禁集。
 
 在 CI 之外（`CI` 不为 `true`），默认 worker 数遵循[本地 worker 预算](../scripts/parallelism.ts)：门禁调度器、`build`、`typecheck`、Oxlint 与 publint 为 12，Vitest fork 与本地覆盖率为 48。`doc-sync`、`test:docs`、`hygiene` 与 `check:all` 最多同时运行 8 个门禁，CI 中同样如此。`os.availableParallelism()` 报告的是宿主 CPU 数而不是容器的 CPU 配额，因此不设上限的默认值会在共享主机上超额订阅。CI 仍使用 runner 的 CPU 数。`DSH_GATE_CONCURRENCY`、`DSH_OXLINT_THREADS`、`DSH_COVERAGE_MAX_WORKERS` 与 Vitest 的 `--maxWorkers` 可覆盖这些默认值。
 

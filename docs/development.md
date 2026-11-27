@@ -11,7 +11,7 @@ The setup tutorial takes a new contributor from prerequisites to a checked check
 - Node.js 24.9 or newer. CI covers 24.9, the latest 24, and 26; see the [Node engine floor Agent Note](../.agents/notes/implemented/process/2026-10-15-node-24-runtime-floor.md).
 - Node.js TypeScript type stripping enabled. The repository build scripts load `tsdown.config.ts` with tsdown's native config loader, so they fail when `--no-experimental-strip-types` is in `NODE_OPTIONS` or the Node.js build lacks TypeScript support; `pnpm run build` checks this first and names the cause.
 - Corepack-enabled pnpm. The repo pins `pnpm@11.28.5` in `package.json`; run `corepack enable` if `pnpm --version` does not resolve through Corepack.
-- Git 2.26 or newer; hook setup enables Git's worktree-specific configuration extension.
+- Git 2.26 or newer.
 - Optional: a DeepSeek API key for the Web, headless, and ACP automation demos and real-API e2e tests.
 
 ### Windows and WSL 2
@@ -32,17 +32,9 @@ Install dependencies from the repo root:
 pnpm install
 ```
 
-The install also configures worktree-local Lefthook hooks through `scripts/install-lefthook.mjs`. The [worktree-local hooks Agent Note](../.agents/notes/implemented/process/2026-07-27-worktree-local-lefthook.md) owns the hook-path safety contract.
-
 The [DevTools frontend](../packages/experimental/inspector/README.md#use-this-package) is compiled locally from a pinned npm source package and Vite. After dependencies are installed, its build needs no network access or browser installation. Workspace and published-package installation run no DevTools resource-download hook; published Inspector packages contain the built frontend.
 
-If the hooks are missing because dependencies were restored from cache or `postinstall` was skipped, install them manually:
-
-```sh
-node scripts/install-lefthook.mjs
-```
-
-If the wrapper rejects existing Git configuration or reports a stale lock, follow its diagnostic and the linked Agent Note rather than editing worktree metadata speculatively. After moving a checkout, rerun the wrapper to regenerate the owned path.
+To clean up an existing checkout with project-installed Lefthook scripts, inspect `git config --show-origin --get core.hooksPath`. Confirm ownership from `.dsh-lefthook-owned` in the configured `dsh-hooks` directory. Remove the generated `pre-commit`, `pre-merge-commit`, and `pre-push` scripts there and any identical copies in the default Git hooks directory. Clear the matching value with `git config --worktree --fixed-value --unset-all core.hooksPath <owned-path>`.
 
 Run typecheck once after a fresh clone:
 
@@ -137,21 +129,11 @@ DEEPSEEK_BASE_URL=https://... # optional
 
 ### Git integrations
 
-`.i18n.yaml` records use Git's default text merge. A record conflicts only when both branches changed language-specific content in the same heading section; resolve the Markdown, then rerun `pnpm run verify-translation-pairing --write <pair>`. If `pre-merge-commit` rejects an otherwise clean merge, Git leaves the complete result staged without a commit; repair the failure and run `git commit`, or run `git merge --abort`.
+`.i18n.yaml` records use Git's default text merge. When both branches change language-specific content in the same heading section, resolve the Markdown, then rerun `pnpm run verify-translation-pairing --write <pair>`.
 
-lefthook is configured in `lefthook.yml` as a fast local checkpoint:
+Contributors run the [checks relevant to the changed behavior](../AGENTS.md#run-relevant-checks-locally) once. CI owns exhaustive coverage, built-artifact smokes, and the Node 24.9, latest 24, and 26 compatibility matrix.
 
-- `pre-commit` verifies staged pairing records against the staged owner blobs, validates staged files with the project-free `.oxlintrc.staged.json` profile and applies Oxlint fixes with one bounded retry, checks the staged diff for whitespace errors, checks pi-ai provider metadata when its inputs or generated file are staged, and runs the vendor manifest guard.
-- `pre-merge-commit` performs the same index-backed pairing check before Git creates an automatic merge commit.
-- `pre-push` runs `pnpm run typecheck`, which generates Typert contracts without bundling before the Client TypeScript check and checks both aggregates.
-
-The vendor manifest guard checks that changes under `vendor/*/src` are staged with the matching `vendor/README.md` manifest update. See `vendor/README.md` before editing vendored code.
-
-The pi-ai check regenerates expected metadata in memory. It rejects stale data without rewriting or staging files. After a pi-ai dependency or generator change, follow the package's [provider metadata update steps](../packages/llm/llm-pi-ai/README.md#generated-provider-metadata).
-
-Apart from the scoped pairing and provider metadata checks, the hooks intentionally do not run tests, snapshots, documentation checks, builds, or hygiene. Contributors run the [checks relevant to the changed behavior](../AGENTS.md#run-relevant-checks-locally) once; CI owns exhaustive coverage, built-artifact smokes, and the Node 24.9, latest 24, and 26 compatibility matrix.
-
-Contributors can opt into the comprehensive local gate set with `pnpm run check:all`. The command is independent of the Git hooks and is not an agent instruction.
+Contributors can opt into the comprehensive local gate set with `pnpm run check:all`.
 
 Outside CI (`CI` other than `true`), default worker counts follow the [local worker budget](../scripts/parallelism.ts): 12 for gate schedulers, `build`, `typecheck`, Oxlint, and publint, and 48 for Vitest forks and local coverage. `doc-sync`, `test:docs`, `hygiene`, and `check:all` run at most 8 gates at once, in CI as well. `os.availableParallelism()` reports host CPUs rather than a container's CPU quota, so uncapped defaults oversubscribe shared hosts. CI keeps the runner's CPU count. `DSH_GATE_CONCURRENCY`, `DSH_OXLINT_THREADS`, `DSH_COVERAGE_MAX_WORKERS`, and Vitest `--maxWorkers` override the defaults.
 

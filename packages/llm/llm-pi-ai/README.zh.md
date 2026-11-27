@@ -190,7 +190,7 @@ git add packages/llm/llm-pi-ai/src/provider-data.generated.ts
 
 检查生成的 diff，并一同暂存依赖或生成器的改动。不要手工编辑生成文件。生成失败时，先解决错误再提交。
 
-暂存 `pnpm-lock.yaml`、本包的 `package.json`、生成器或生成文件时，`pre-commit` 钩子会直接运行 `node_modules/.bin/tsx packages/llm/llm-pi-ai/scripts/gen-provider-data.ts --check --cached`，无需 Git 客户端的 PATH 中有 `pnpm`。它将暂存的生成文件与基于已安装依赖和当前生成器计算的预期数据比较，不改写或暂存文件。只更新工作区文件还不够；生成文件也必须暂存。检查报告元数据过期时，请重新运行上述命令，再尝试提交。即使本地钩子未触发，CI 仍会基于检出文件和按锁文件安装的依赖运行 `pnpm run verify-provider-data`。
+`pnpm run verify-provider-data` 会将工作区中的生成文件与基于已安装依赖计算的元数据比较。CI 使用锁文件中的依赖运行相同检查。如果检查报告元数据过期，请重新生成文件，并将更新纳入本次改动。
 
 ### 回放与词汇
 

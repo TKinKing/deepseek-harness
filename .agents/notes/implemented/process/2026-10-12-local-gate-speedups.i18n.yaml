@@ -18,8 +18,8 @@
   en: e9c08ebd00049b44
   zh: 36e90dc485b4acb7
 /agent-note-local-gate-hook-and-test-speed-ups/decision/2-the-pre-commit-hook-does-not-regenerate-third-party-notices:
-  en: e2e344f184621172
-  zh: 97d8785aaf9105bf
+  en: f1af9f5e34b6d983
+  zh: c9cfa4ac86337999
 /agent-note-local-gate-hook-and-test-speed-ups/decision/3-local-default-worker-budget:
   en: e9649c40d67e26e0
   zh: c99f22a41c4fc4af
@@ -45,5 +45,5 @@
   en: 763d94734b8967cf
   zh: abe980d486e1d7da
 /agent-note-local-gate-hook-and-test-speed-ups/consequences:
-  en: ca00b04567d09408
-  zh: 97011043c60f4bc9
+  en: ba922fe79c4fb347
+  zh: a39d9b1a2adaaeb8

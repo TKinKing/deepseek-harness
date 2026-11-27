@@ -22,7 +22,7 @@ beforeAll(async () => {
   repositoryRoot = await realpath(repositoryRoot)
   const files = [
     ...globSync('tsconfig*.json', { cwd: sourceRepositoryRoot }),
-    '.oxlintrc.json', '.oxlintrc.staged.json', 'package.json', 'lefthook.yml',
+    '.oxlintrc.json', '.oxlintrc.staged.json', 'package.json',
     'apps', 'native', 'packages', 'python', 'scripts', 'vendor', 'website',
   ]
   for (const path of files) {
@@ -30,7 +30,7 @@ beforeAll(async () => {
       recursive: true,
       async filter(source) {
         if (['node_modules', 'lib', '.typecheck'].includes(basename(source))) return false
-        return (await lstat(source)).isDirectory() || /\.(?:json|[cm]?[jt]sx?)$/u.test(source) || source.endsWith('lefthook.yml')
+        return (await lstat(source)).isDirectory() || /\.(?:json|[cm]?[jt]sx?)$/u.test(source)
       },
     })
   }
@@ -254,11 +254,6 @@ export const longProbe = 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 +
     expect(packageJson.devDependencies).not.toHaveProperty('eslint')
     expect(packageJson.devDependencies).not.toHaveProperty('@typescript-eslint/parser')
     expect(existsSync(join(sourceRepositoryRoot, 'eslint.format.config.mjs'))).toBe(false)
-
-    const lefthook = await readFile(join(repositoryRoot, 'lefthook.yml'), 'utf8')
-    expect(lefthook).toContain('scripts/run-oxlint.ts --config .oxlintrc.staged.json --fix')
-    expect(lefthook).not.toContain('node_modules/.bin/eslint')
-    expect(lefthook).not.toContain('eslint.format.config.mjs')
   })
 
   it('reports an unused suppression', async () => {
@@ -379,17 +374,6 @@ export function unrelatedRead(): void {
         rm(configPath, { force: true }),
       ])
     }
-  }, 90_000)
-
-  it('accepts an ignored-only staged selection', () => {
-    const result = runOxlint([
-      '--fix',
-      '--no-error-on-unmatched-pattern',
-      'scripts/install-lefthook.mjs',
-    ])
-
-    expect(result.error).toBeUndefined()
-    expect(result.status, normalizedOutput(result)).toBe(0)
   }, 90_000)
 
   it('keeps staged validation project-free while preserving source rules', async () => {

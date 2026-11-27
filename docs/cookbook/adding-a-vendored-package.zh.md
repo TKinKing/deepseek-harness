@@ -44,9 +44,9 @@ vendored TypeScript 源码中的本地相对导入/导出在复制后使用显�
 
 以下由 glob 自动覆盖，无需手动编辑：根 `package.json` 的 workspaces（`vendor/*`）、`tsdown.config.ts`、`vitest.config.ts`、`.oxlintrc.json`。只有当构建配置与根默认值不同时（双 ESM/CJS 或多入口——参见 `vendor/schemastery` 和 `vendor/logger-console`），才需要单独的 `vendor/<dir>/tsdown.config.ts`；其入口应读取 `lib/types` 下输出的 JS。
 
-## 3. 注意 manifest 守卫
+## 3. 暂存 vendor manifest
 
-`scripts/check-vendor-manifest.sh`（pre-commit 钩子）会在 `vendor/*/src` 下有暂存改动但 `vendor/README.md` 未一起暂存时失败。请将 manifest 更新与源码一起暂存，以通过提交检查。
+将 `vendor/README.md` 的 manifest 更新与 vendored 源码改动一起暂存。
 
 ## 4. 验证
 

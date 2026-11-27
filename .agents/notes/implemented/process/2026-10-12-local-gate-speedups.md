@@ -52,7 +52,7 @@ All numbers are wall times from one shared Linux container with a 64-CPU quota o
 
 ### 2. The pre-commit hook does not regenerate third-party notices
 
-- **Change:** The `pre-commit` hook in [`lefthook.yml`](../../../../lefthook.yml) has no third-party notices job. [`gen-third-party-notices.spec.ts`](../../../../scripts/gen-third-party-notices.spec.ts) asserts the committed bytes of `THIRD_PARTY_NOTICES.md` in the test lane, including the required `node 24 / coverage` lane, and names `pnpm run gen-third-party-notices` when they are stale. [The generated third-party notices note](2026-07-30-generated-third-party-notices.md) owns this freshness decision.
+- **Change:** [`gen-third-party-notices.spec.ts`](../../../../scripts/gen-third-party-notices.spec.ts) asserts the committed bytes of `THIRD_PARTY_NOTICES.md` in the test lane, including the required `node 24 / coverage` lane, and names `pnpm run gen-third-party-notices` when they are stale. [The generated third-party notices note](2026-07-30-generated-third-party-notices.md) owns this freshness decision.
 - **Performance:** A commit that stages one file under a package `src/` subdirectory spends 4.3/4.5 s in the hooks instead of 16.5/17.8 s, of which the notices job took 12.4/13.4 s.
 - **Trade-off:** A commit that leaves the notices stale fails in the test lane after push rather than being corrected at commit time.
 
@@ -143,7 +143,7 @@ Both trees were measured in the same session, alternating baseline and implement
 
 ## Consequences
 
-The pre-push `typecheck` with nothing to recheck takes about 14–22 s, the `lint` and `doc-typecheck` prerequisite about 12 s, and the hooks of a one-file commit about 4 s. `pnpm run test` starts at most 48 forks locally, and `test:docs` and `doc-sync` run up to 8 gates at once. Typert outputs, generated pages, file lists, and reference classifications are byte-identical to the baseline.
+The measured `typecheck` with nothing to recheck takes about 14–22 s, and the `lint` and `doc-typecheck` prerequisite takes about 12 s. `pnpm run test` starts at most 48 forks locally, and `test:docs` and `doc-sync` run up to 8 gates at once. Typert outputs, generated pages, file lists, and reference classifications are byte-identical to the baseline.
 
 Costs: type-check commands do not refresh runnable bundles; a stale notices file fails in the test lane after push; local defaults ignore CPUs above the caps and still oversubscribe a container whose quota is below them; 8 concurrent documentation gates raise the `doc-sync` RSS peak; CLI help uses about 3.6 GB at peak; doc graphs and markdown links assume the tree does not change during a run; `type-model.spec.ts` exercises stubs rather than real zod, `@types/node`, the DOM library, and disk I/O outside the Emitter case; and incremental `typecheck` inherits the Remote-declaration gap that Issue #6022 tracks.
 

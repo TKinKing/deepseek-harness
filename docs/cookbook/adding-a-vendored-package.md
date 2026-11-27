@@ -44,9 +44,9 @@ Local relative imports/exports in vendored TypeScript source use explicit `.ts` 
 
 Covered automatically by globs — no edits needed: root `package.json` workspaces (`vendor/*`), `tsdown.config.ts`, `vitest.config.ts`, `.oxlintrc.json`. A per-package `vendor/<dir>/tsdown.config.ts` is needed ONLY if the build configuration differs from the root default (dual ESM/CJS or multiple entries — see `vendor/schemastery` and `vendor/logger-console`); its entry should read the JS emitted under `lib/types`.
 
-## 3. Mind the manifest guard
+## 3. Stage the vendor manifest
 
-`scripts/check-vendor-manifest.sh` (a pre-commit hook) fails if anything under `vendor/*/src` is staged without `vendor/README.md` also staged. Stage the manifest update alongside the source so the commit passes.
+Stage the `vendor/README.md` manifest update alongside the vendored source changes.
 
 ## 4. Verify
 
